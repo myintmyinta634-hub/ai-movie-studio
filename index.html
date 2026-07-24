@@ -1,193 +1,191 @@
 <!DOCTYPE html>
-<html lang="my" class="dark">
+<html lang="my">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Movie Recap Studio</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- JSZip for Zip Download -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecapAI Pro - Myanmar Video Studio</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #0d1117; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 500px; width: 100%; background: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
+        h2 { text-align: center; color: #58a6ff; margin-bottom: 20px; }
+        
+        .upload-box {
+            border: 2px dashed #3fb950; border-radius: 8px; padding: 30px 15px;
+            text-align: center; cursor: pointer; background: #21262d; transition: 0.3s;
+        }
+        .upload-box:active { background: #282e33; }
+        
+        .btn-process {
+            width: 100%; margin-top: 20px; padding: 14px; background: #238636;
+            color: white; border: none; border-radius: 6px; font-weight: bold;
+            font-size: 16px; cursor: pointer;
+        }
+        .btn-process:disabled { background: #484f58; cursor: not-allowed; }
+        
+        .progress-box { margin-top: 20px; display: none; }
+        .progress-bar-bg { background: #30363d; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar-fill { background: #58a6ff; width: 0%; height: 100%; transition: width 0.2s; }
+        .progress-text { font-size: 13px; color: #8b949e; text-align: center; }
+
+        .result-box { margin-top: 20px; display: none; text-align: center; }
+        video { width: 100%; border-radius: 8px; margin-bottom: 12px; background: #000; }
+        .btn-download {
+            display: inline-block; padding: 10px 20px; background: #1f6feb;
+            color: white; text-decoration: none; border-radius: 6px; font-weight: bold;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col font-sans antialiased">
+<body>
 
-  <!-- Navigation Bar -->
-  <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="p-2 bg-indigo-600 rounded-lg"><i data-lucide="clapperboard" class="w-6 h-6 text-white"></i></div>
-        <span class="font-bold text-xl bg-gradient-to-r from-indigo-400 to-pink-500 bg-clip-text text-transparent">RecapAI Pro</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="themeToggle" class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800">
-          <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
-          <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
-        </button>
-        <span class="px-3 py-1 text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full font-medium">Unlimited Free Mode</span>
-      </div>
-    </div>
-  </header>
+<div class="container">
+    <h2>🎬 RecapAI Pro Studio</h2>
 
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Hidden File Input -->
+    <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
 
-    <!-- Control Panel Section (Left) -->
-    <div class="lg:col-span-5 space-y-6">
-      
-      <!-- Upload Box -->
-      <div class="bg-gray-800/50 border-2 border-dashed border-gray-700 rounded-2xl p-6 text-center hover:border-indigo-500 transition cursor-pointer relative" id="dropZone">
-        <input type="file" id="videoInput" accept="video/*" class="hidden">
-        <div id="uploadPlaceholder" class="space-y-3">
-          <div class="w-12 h-12 bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto">
-            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <p class="font-medium">Drag & Drop or Click to Upload Video</p>
-            <p class="text-xs text-gray-400 mt-1">MP4, MOV, AVI (Unlimited Duration)</p>
-          </div>
-        </div>
-        <div id="videoPreviewContainer" class="hidden space-y-3">
-          <video id="sourceVideo" class="w-full h-40 bg-black rounded-lg object-contain" controls></video>
-          <div class="flex justify-between text-xs text-gray-400">
-            <span id="fileName">video.mp4</span>
-            <span id="fileSize">0 MB</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Processing Options -->
-      <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 space-y-5">
-        <h3 class="font-semibold text-lg flex items-center gap-2 text-indigo-400">
-          <i data-lucide="sliders" class="w-5 h-5"></i> Video Settings
-        </h3>
-
-        <!-- Output Duration -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-2">Target Duration (Recap Length)</label>
-          <div class="grid grid-cols-5 gap-2">
-            <button class="dur-btn active" data-min="1">1 Min</button>
-            <button class="dur-btn" data-min="2">2 Min</button>
-            <button class="dur-btn" data-min="4">4 Min</button>
-            <button class="dur-btn" data-min="8">8 Min</button>
-            <button class="dur-btn" data-min="10">10 Min</button>
-          </div>
-        </div>
-
-        <!-- Aspect Ratio Selector -->
-        <div>
-          <label class="block text-xs text-gray-400 mb-2">Aspect Ratio (Dimensions)</label>
-          <select id="aspectRatio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none">
-            <option value="16:9">16:9 (Landscape - YouTube)</option>
-            <option value="9:16">9:16 (Portrait - TikTok / Reels / Shorts)</option>
-            <option value="1:1">1:1 (Square - Instagram)</option>
-            <option value="4:5">4:5 (Social Feed)</option>
-            <option value="4:3">4:3 (Classic)</option>
-          </select>
-        </div>
-
-        <!-- Voice & Language -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Language</label>
-            <select id="languageSelect" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
-              <option value="my-MM" selected>မြန်မာ (Burmese)</option>
-              <option value="en-US">English</option>
-              <option value="th-TH">Thai</option>
-              <option value="zh-CN">Chinese</option>
-              <option value="ja-JP">Japanese</option>
-              <option value="ko-KR">Korean</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Narrator Voice (10 Google Voices)</label>
-            <select id="voiceSelect" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
-              <!-- Dynamically Populated with 5 Male & 5 Female Voices -->
-            </select>
-          </div>
-        </div>
-
-        <!-- Recap Style & Subtitles -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Recap Tone/Style</label>
-            <select id="styleSelect" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
-              <option value="Dramatic & Thrilling">Dramatic & Thrilling</option>
-              <option value="Funny & Comedy">Funny & Comedy</option>
-              <option value="Action Fast-Paced">Action Fast-Paced</option>
-              <option value="Emotional Storytelling">Emotional Storytelling</option>
-            </select>
-          </div>
-          <div class="flex items-center justify-between pt-6">
-            <span class="text-xs text-gray-300">Auto Captions</span>
-            <input type="checkbox" id="subtitlesToggle" checked class="w-4 h-4 accent-indigo-600">
-          </div>
-        </div>
-
-        <!-- Process Button -->
-        <button id="startProcessBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
-          <i data-lucide="sparkles" class="w-5 h-5"></i> Generate Full Recap Video
-        </button>
-      </div>
+    <!-- Visible Upload Area -->
+    <div class="upload-box" id="dropArea">
+        <p id="uploadStatusText" style="font-weight: bold; font-size: 16px;">📁 ဗီဒီယို တင်ရန် ဤနေရာကို နှိပ်ပါ</p>
+        <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(ဗီဒီယို ကြာချိန် အကန့်အသတ်မရှိ)</p>
     </div>
 
-    <!-- Right Side: Real-time Output & Player -->
-    <div class="lg:col-span-7 space-y-6">
+    <button class="btn-process" id="startBtn">Generate Full Recap Video</button>
 
-      <!-- Realtime Processing Progress Panel -->
-      <div id="progressContainer" class="hidden bg-gray-800/40 border border-gray-800 rounded-2xl p-6 space-y-4">
-        <div class="flex justify-between items-center">
-          <span id="progressStep" class="text-sm font-medium text-indigo-400">Extracting audio... (10%)</span>
-          <button id="cancelBtn" class="text-xs text-red-400 hover:underline">Cancel</button>
+    <!-- Progress Status -->
+    <div class="progress-box" id="progressBox">
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressFill"></div>
         </div>
-        <div class="w-full bg-gray-900 rounded-full h-3 overflow-hidden border border-gray-800">
-          <div id="progressBar" class="bg-indigo-600 h-full w-[10%] transition-all duration-300"></div>
-        </div>
-      </div>
-
-      <!-- Preview Output Container -->
-      <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 space-y-4">
-        <h3 class="font-semibold text-lg flex items-center gap-2 text-pink-400">
-          <i data-lucide="play-circle" class="w-5 h-5"></i> Final Recap & Narrated Video Preview
-        </h3>
-
-        <!-- Output Canvas/Video Render -->
-        <div class="relative bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[320px]">
-          <video id="recapOutputVideo" class="max-h-[500px] w-full object-contain hidden" controls></video>
-          <canvas id="renderCanvas" class="hidden"></canvas>
-          <div id="playerPlaceholder" class="text-center text-gray-500 space-y-2 p-6">
-            <i data-lucide="video" class="w-12 h-12 mx-auto stroke-1"></i>
-            <p>Your generated recap video will appear here.</p>
-          </div>
-        </div>
-
-        <!-- Download Buttons -->
-        <div class="flex flex-wrap gap-3">
-          <button id="downloadVideoBtn" disabled class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-medium text-sm flex items-center justify-center gap-2">
-            <i data-lucide="download" class="w-4 h-4"></i> Download Narrated Video
-          </button>
-          <button id="downloadZipBtn" disabled class="py-3 px-5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-medium text-sm flex items-center justify-center gap-2">
-            <i data-lucide="file-archive" class="w-4 h-4"></i> Download All (ZIP)
-          </button>
-        </div>
-      </div>
-
-      <!-- Generated Script / Transcript Box -->
-      <div class="bg-gray-800/30 border border-gray-800 rounded-2xl p-5 space-y-3">
-        <div class="flex justify-between items-center">
-          <h3 class="font-semibold text-md text-gray-200 flex items-center gap-2">
-            <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i> Video Transcript & Story Script
-          </h3>
-          <button id="copyScriptBtn" class="text-xs text-indigo-400 hover:underline">Copy Text</button>
-        </div>
-        <textarea id="transcriptBox" readonly rows="6" class="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-sm text-gray-300 font-mono resize-none outline-none" placeholder="AI Generated transcript will appear here in real-time..."></textarea>
-      </div>
-
+        <div class="progress-text" id="statusText">စတင်နေပါသည်... (0%)</div>
     </div>
-  </main>
 
-  <script src="app.js"></script>
+    <!-- Preview & Download -->
+    <div class="result-box" id="resultBox">
+        <h3>🎉 Recap Video ပြုလုပ်ပြီးပါပြီ</h3>
+        <video id="outVideo" controls></video>
+        <a id="dlBtn" class="btn-download" download="Movie_Recap_Myanmar.webm">Download Video</a>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('videoFileInput');
+    const dropArea = document.getElementById('dropArea');
+    const uploadText = document.getElementById('uploadStatusText');
+    const startBtn = document.getElementById('startBtn');
+    const progressBox = document.getElementById('progressBox');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('statusText');
+    const resultBox = document.getElementById('resultBox');
+    const outVideo = document.getElementById('outVideo');
+    const dlBtn = document.getElementById('dlBtn');
+
+    let loadedFile = null;
+
+    // 1. Upload Box Click Handler
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            loadedFile = e.target.files[0];
+            uploadText.innerText = `✅ ရွေးချယ်ပြီး: ${loadedFile.name}`;
+            uploadText.style.color = '#3fb950';
+        }
+    });
+
+    // 2. Process Video (3-Second Chunking & Myanmar TTS Sync)
+    startBtn.addEventListener('click', async () => {
+        if (!loadedFile) {
+            alert("ကျေးဇူးပြု၍ ဗီဒီယိုဖိုင် ရွေးချယ်ပေးပါ!");
+            return;
+        }
+
+        startBtn.disabled = true;
+        progressBox.style.display = 'block';
+        resultBox.style.display = 'none';
+
+        try {
+            const vUrl = URL.createObjectURL(loadedFile);
+            const tempVid = document.createElement('video');
+            tempVid.src = vUrl;
+            tempVid.muted = true;
+
+            await new Promise(res => tempVid.onloadedmetadata = res);
+
+            const duration = tempVid.duration; 
+            const chunkSize = 3; // ၃ စက္ကန့်စီ ခွဲထုတ်မည်
+            const totalClips = Math.floor(duration / chunkSize);
+
+            if (totalClips < 1) {
+                alert("ဗီဒီယိုသည် အနည်းဆုံး ၃ စက္ကန့် ရှိရပါမည်။");
+                startBtn.disabled = false;
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = tempVid.videoWidth || 640;
+            canvas.height = tempVid.videoHeight || 360;
+            const ctx = canvas.getContext('2d');
+
+            const stream = canvas.captureStream(30);
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            const chunks = [];
+
+            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            recorder.start();
+
+            for (let i = 0; i < totalClips; i++) {
+                const startTime = i * chunkSize;
+                const pct = Math.round(((i + 1) / totalClips) * 100);
+                
+                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား ၃ စက္ကန့်စီ ခွဲ၍ မြန်မာအသံ Sync လုပ်နေပါသည်... (${pct}%)`;
+                progressFill.style.width = pct + '%';
+
+                tempVid.currentTime = startTime;
+                await new Promise(r => tempVid.onseeked = r);
+
+                // Speech Synthesis
+                speakText(`ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`);
+
+                let elapsed = 0;
+                tempVid.play();
+                while (elapsed < chunkSize) {
+                    ctx.drawImage(tempVid, 0, 0, canvas.width, canvas.height);
+                    await new Promise(r => setTimeout(r, 33));
+                    elapsed += 0.033;
+                }
+                tempVid.pause();
+            }
+
+            recorder.stop();
+
+            recorder.onstop = () => {
+                const finalBlob = new Blob(chunks, { type: 'video/webm' });
+                const resUrl = URL.createObjectURL(finalBlob);
+                outVideo.src = resUrl;
+                dlBtn.href = resUrl;
+                resultBox.style.display = 'block';
+                statusText.innerText = "လုပ်ဆောင်ချက် အားလုံး ပြီးပါပြီ!";
+                startBtn.disabled = false;
+            };
+
+        } catch (err) {
+            alert("အမှားတစ်ခု ဖြစ်ပေါ်ခဲ့ပါသည်။ " + err.message);
+            startBtn.disabled = false;
+        }
+    });
+
+    function speakText(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.lang = 'my-MM';
+            window.speechSynthesis.speak(utt);
+        }
+    }
+</script>
+
 </body>
 </html>
