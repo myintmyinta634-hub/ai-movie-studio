@@ -1,0 +1,21 @@
+/* Custom Styles & Responsiveness */
+.dur-btn {
+  @apply py-2 bg-gray-900 border border-gray-700 rounded-lg text-xs font-semibold hover:border-indigo-500 transition text-gray-300;
+}
+
+.dur-btn.active {
+  @apply bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30;
+}
+
+/* Custom Scrollbar for Phone UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
