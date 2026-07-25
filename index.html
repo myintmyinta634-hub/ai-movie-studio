@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RecapAI Pro - Myanmar Video Studio</title>
+    <title>RecapAI Pro - Myanmar Voice Video Studio</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: #0d1117; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
@@ -45,7 +45,7 @@
 
     <div class="upload-box" id="dropArea">
         <p id="uploadStatusText" style="font-weight: bold; font-size: 16px;">📁 ဗီဒီယို တင်ရန် ဤနေရာကို နှိပ်ပါ</p>
-        <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(ဗီဒီယို ကြာချိန် အကန့်အသတ်မရှိ)</p>
+        <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(မြန်မာ AI အသံပါဝင်သော Recap Video ပြုလုပ်မည်)</p>
     </div>
 
     <button class="btn-process" id="startBtn">Generate Full Recap Video</button>
@@ -58,7 +58,7 @@
     </div>
 
     <div class="result-box" id="resultBox">
-        <h3>🎉 Recap Video ပြုလုပ်ပြီးပါပြီ</h3>
+        <h3>🎉 မြန်မာအသံပါသော Recap Video ရပါပြီ</h3>
         <video id="outVideo" controls playsinline></video>
         <a id="dlBtn" class="btn-download" download="Movie_Recap_Myanmar.webm">Download Video</a>
     </div>
@@ -87,6 +87,25 @@
             uploadText.style.color = '#3fb950';
         }
     });
+
+    // CORS Audio Decoder for Myanmar AI Voice
+    async function fetchMyanmarAudioBuffer(text, audioCtx) {
+        const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=my&q=${encodeURIComponent(text)}`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(googleTtsUrl)}`;
+        
+        try {
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error("Proxy error");
+            const arrayBuffer = await res.arrayBuffer();
+            return await audioCtx.decodeAudioData(arrayBuffer);
+        } catch (err) {
+            console.warn("Proxy 1 failed, trying proxy 2...", err);
+            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(googleTtsUrl)}`;
+            const res2 = await fetch(fallbackUrl);
+            const arrayBuffer2 = await res2.arrayBuffer();
+            return await audioCtx.decodeAudioData(arrayBuffer2);
+        }
+    }
 
     startBtn.addEventListener('click', async () => {
         if (!loadedFile) {
@@ -117,12 +136,25 @@
                 return;
             }
 
+            // Canvas Setup (Video Track)
             const canvas = document.createElement('canvas');
             canvas.width = tempVid.videoWidth || 640;
             canvas.height = tempVid.videoHeight || 360;
             const ctx = canvas.getContext('2d');
+            const canvasStream = canvas.captureStream(30);
 
-            const stream = canvas.captureStream(30);
+            // Web Audio API Setup (Myanmar Voice Audio Track)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            const audioDest = audioCtx.createMediaStreamDestination();
+
+            // Combine Video + Audio Streams
+            const combinedStream = new MediaStream([
+                ...canvasStream.getVideoTracks(),
+                ...audioDest.stream.getAudioTracks()
+            ]);
 
             let mimeType = 'video/webm';
             if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
@@ -131,7 +163,7 @@
                 mimeType = 'video/mp4';
             }
 
-            const recorder = new MediaRecorder(stream, { mimeType });
+            const recorder = new MediaRecorder(combinedStream, { mimeType });
             const chunks = [];
 
             recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
@@ -141,14 +173,24 @@
                 const startTime = i * chunkSize;
                 const pct = Math.round(((i + 1) / totalClips) * 100);
                 
-                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား ခွဲထုတ်၍ မြန်မာအသံ ပြောကြားနေပါသည်... (${pct}%)`;
+                statusText.innerText = `Clip (${i + 1}/${totalClips}) အတွက် မြန်မာ AI အသံ ပေါင်းစပ်နေပါသည်... (${pct}%)`;
                 progressFill.style.width = pct + '%';
 
                 tempVid.currentTime = startTime;
                 await new Promise(r => tempVid.onseeked = r);
 
-                // Speech Narration via Web Speech API
-                speakText(`ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`);
+                // Fetch & Inject Myanmar Voice Audio into Video Audio Track
+                const speechScript = `ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`;
+                try {
+                    const audioBuffer = await fetchMyanmarAudioBuffer(speechScript, audioCtx);
+                    const sourceNode = audioCtx.createBufferSource();
+                    sourceNode.buffer = audioBuffer;
+                    sourceNode.connect(audioDest); // Stream directly to video recorder
+                    sourceNode.connect(audioCtx.destination); // Play to speaker
+                    sourceNode.start();
+                } catch (audioErr) {
+                    console.error("Audio Injection Error:", audioErr);
+                }
 
                 let elapsed = 0;
                 tempVid.play();
@@ -169,7 +211,7 @@
                 dlBtn.href = resUrl;
                 dlBtn.download = `Movie_Recap_Myanmar.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
                 resultBox.style.display = 'block';
-                statusText.innerText = "လုပ်ဆောင်ချက် အားလုံး အောင်မြင်စွာ ပြီးပါပြီ!";
+                statusText.innerText = "မြန်မာအသံပါဝင်သော Recap Video ပြုလုပ်ပြီးပါပြီ!";
                 startBtn.disabled = false;
             };
 
@@ -178,16 +220,6 @@
             startBtn.disabled = false;
         }
     });
-
-    function speakText(text) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utt = new SpeechSynthesisUtterance(text);
-            utt.lang = 'my-MM';
-            utt.rate = 1.0;
-            window.speechSynthesis.speak(utt);
-        }
-    }
 </script>
 
 </body>
