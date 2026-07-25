@@ -41,10 +41,8 @@
 <div class="container">
     <h2>🎬 RecapAI Pro Studio</h2>
 
-    <!-- Hidden File Input -->
     <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
 
-    <!-- Visible Upload Area -->
     <div class="upload-box" id="dropArea">
         <p id="uploadStatusText" style="font-weight: bold; font-size: 16px;">📁 ဗီဒီယို တင်ရန် ဤနေရာကို နှိပ်ပါ</p>
         <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(ဗီဒီယို ကြာချိန် အကန့်အသတ်မရှိ)</p>
@@ -52,7 +50,6 @@
 
     <button class="btn-process" id="startBtn">Generate Full Recap Video</button>
 
-    <!-- Progress Status -->
     <div class="progress-box" id="progressBox">
         <div class="progress-bar-bg">
             <div class="progress-bar-fill" id="progressFill"></div>
@@ -60,7 +57,6 @@
         <div class="progress-text" id="statusText">စတင်နေပါသည်... (0%)</div>
     </div>
 
-    <!-- Preview & Download -->
     <div class="result-box" id="resultBox">
         <h3>🎉 Recap Video ပြုလုပ်ပြီးပါပြီ</h3>
         <video id="outVideo" controls></video>
@@ -82,10 +78,7 @@
 
     let loadedFile = null;
 
-    // 1. Upload Box Click Handler
-    dropArea.addEventListener('click', () => {
-        fileInput.click();
-    });
+    dropArea.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -95,7 +88,6 @@
         }
     });
 
-    // 2. Process Video (3-Second Chunking & Myanmar TTS Sync)
     startBtn.addEventListener('click', async () => {
         if (!loadedFile) {
             alert("ကျေးဇူးပြု၍ ဗီဒီယိုဖိုင် ရွေးချယ်ပေးပါ!");
@@ -115,7 +107,7 @@
             await new Promise(res => tempVid.onloadedmetadata = res);
 
             const duration = tempVid.duration; 
-            const chunkSize = 3; // ၃ စက္ကန့်စီ ခွဲထုတ်မည်
+            const chunkSize = 3; 
             const totalClips = Math.floor(duration / chunkSize);
 
             if (totalClips < 1) {
@@ -124,13 +116,27 @@
                 return;
             }
 
+            // Canvas setup (Video stream)
             const canvas = document.createElement('canvas');
             canvas.width = tempVid.videoWidth || 640;
             canvas.height = tempVid.videoHeight || 360;
             const ctx = canvas.getContext('2d');
+            const canvasStream = canvas.captureStream(30);
 
-            const stream = canvas.captureStream(30);
-            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            // Web Audio API setup (Audio stream)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            const audioDest = audioCtx.createMediaStreamDestination();
+
+            // Merge Video + Audio streams into single MediaRecorder stream
+            const combinedStream = new MediaStream([
+                ...canvasStream.getVideoTracks(),
+                ...audioDest.stream.getAudioTracks()
+            ]);
+
+            const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
             const chunks = [];
 
             recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -140,14 +146,15 @@
                 const startTime = i * chunkSize;
                 const pct = Math.round(((i + 1) / totalClips) * 100);
                 
-                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား ၃ စက္ကန့်စီ ခွဲ၍ မြန်မာအသံ Sync လုပ်နေပါသည်... (${pct}%)`;
+                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား မြန်မာအသံ ထည့်သွင်းပေးနေပါသည်... (${pct}%)`;
                 progressFill.style.width = pct + '%';
 
                 tempVid.currentTime = startTime;
                 await new Promise(r => tempVid.onseeked = r);
 
-                // Speech Synthesis
-                speakText(`ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`);
+                // Play & record Myanmar voice directly into audio stream
+                const myScript = `ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`;
+                await playAndRecordMyanmarSpeech(myScript, audioCtx, audioDest);
 
                 let elapsed = 0;
                 tempVid.play();
@@ -167,7 +174,7 @@
                 outVideo.src = resUrl;
                 dlBtn.href = resUrl;
                 resultBox.style.display = 'block';
-                statusText.innerText = "လုပ်ဆောင်ချက် အားလုံး ပြီးပါပြီ!";
+                statusText.innerText = "မြန်မာအသံပါဝင်သော Recap Video ပြုလုပ်ပြီးပါပြီ!";
                 startBtn.disabled = false;
             };
 
@@ -177,13 +184,34 @@
         }
     });
 
-    function speakText(text) {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utt = new SpeechSynthesisUtterance(text);
-            utt.lang = 'my-MM';
-            window.speechSynthesis.speak(utt);
-        }
+    // Myanmar speech synthesizer function (Injected into Web Audio Destination)
+    async function playAndRecordMyanmarSpeech(text, audioCtx, destination) {
+        return new Promise((resolve) => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utt = new SpeechSynthesisUtterance(text);
+                utt.lang = 'my-MM';
+                window.speechSynthesis.speak(utt);
+            }
+
+            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=my&client=tw-ob`;
+            const audio = new Audio();
+            audio.crossOrigin = "anonymous";
+            audio.src = ttsUrl;
+
+            audio.oncanplaythrough = () => {
+                try {
+                    const source = audioCtx.createMediaElementSource(audio);
+                    source.connect(destination);
+                    source.connect(audioCtx.destination);
+                } catch (e) {}
+                audio.play();
+            };
+
+            audio.onended = () => resolve();
+            audio.onerror = () => resolve();
+            setTimeout(() => resolve(), 3000);
+        });
     }
 </script>
 
