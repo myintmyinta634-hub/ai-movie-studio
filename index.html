@@ -59,7 +59,7 @@
 
     <div class="result-box" id="resultBox">
         <h3>🎉 Recap Video ပြုလုပ်ပြီးပါပြီ</h3>
-        <video id="outVideo" controls></video>
+        <video id="outVideo" controls playsinline></video>
         <a id="dlBtn" class="btn-download" download="Movie_Recap_Myanmar.webm">Download Video</a>
     </div>
 </div>
@@ -103,6 +103,7 @@
             const tempVid = document.createElement('video');
             tempVid.src = vUrl;
             tempVid.muted = true;
+            tempVid.playsInline = true;
 
             await new Promise(res => tempVid.onloadedmetadata = res);
 
@@ -116,45 +117,38 @@
                 return;
             }
 
-            // Canvas setup (Video stream)
             const canvas = document.createElement('canvas');
             canvas.width = tempVid.videoWidth || 640;
             canvas.height = tempVid.videoHeight || 360;
             const ctx = canvas.getContext('2d');
-            const canvasStream = canvas.captureStream(30);
 
-            // Web Audio API setup (Audio stream)
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
+            const stream = canvas.captureStream(30);
+
+            let mimeType = 'video/webm';
+            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                mimeType = 'video/webm;codecs=vp8';
+            } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+                mimeType = 'video/mp4';
             }
-            const audioDest = audioCtx.createMediaStreamDestination();
 
-            // Merge Video + Audio streams into single MediaRecorder stream
-            const combinedStream = new MediaStream([
-                ...canvasStream.getVideoTracks(),
-                ...audioDest.stream.getAudioTracks()
-            ]);
-
-            const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+            const recorder = new MediaRecorder(stream, { mimeType });
             const chunks = [];
 
-            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-            recorder.start();
+            recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+            recorder.start(100);
 
             for (let i = 0; i < totalClips; i++) {
                 const startTime = i * chunkSize;
                 const pct = Math.round(((i + 1) / totalClips) * 100);
                 
-                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား မြန်မာအသံ ထည့်သွင်းပေးနေပါသည်... (${pct}%)`;
+                statusText.innerText = `Clip (${i + 1}/${totalClips}) အား ခွဲထုတ်၍ မြန်မာအသံ ပြောကြားနေပါသည်... (${pct}%)`;
                 progressFill.style.width = pct + '%';
 
                 tempVid.currentTime = startTime;
                 await new Promise(r => tempVid.onseeked = r);
 
-                // Play & record Myanmar voice directly into audio stream
-                const myScript = `ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`;
-                await playAndRecordMyanmarSpeech(myScript, audioCtx, audioDest);
+                // Speech Narration via Web Speech API
+                speakText(`ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`);
 
                 let elapsed = 0;
                 tempVid.play();
@@ -169,12 +163,13 @@
             recorder.stop();
 
             recorder.onstop = () => {
-                const finalBlob = new Blob(chunks, { type: 'video/webm' });
+                const finalBlob = new Blob(chunks, { type: mimeType });
                 const resUrl = URL.createObjectURL(finalBlob);
                 outVideo.src = resUrl;
                 dlBtn.href = resUrl;
+                dlBtn.download = `Movie_Recap_Myanmar.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
                 resultBox.style.display = 'block';
-                statusText.innerText = "မြန်မာအသံပါဝင်သော Recap Video ပြုလုပ်ပြီးပါပြီ!";
+                statusText.innerText = "လုပ်ဆောင်ချက် အားလုံး အောင်မြင်စွာ ပြီးပါပြီ!";
                 startBtn.disabled = false;
             };
 
@@ -184,34 +179,14 @@
         }
     });
 
-    // Myanmar speech synthesizer function (Injected into Web Audio Destination)
-    async function playAndRecordMyanmarSpeech(text, audioCtx, destination) {
-        return new Promise((resolve) => {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utt = new SpeechSynthesisUtterance(text);
-                utt.lang = 'my-MM';
-                window.speechSynthesis.speak(utt);
-            }
-
-            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=my&client=tw-ob`;
-            const audio = new Audio();
-            audio.crossOrigin = "anonymous";
-            audio.src = ttsUrl;
-
-            audio.oncanplaythrough = () => {
-                try {
-                    const source = audioCtx.createMediaElementSource(audio);
-                    source.connect(destination);
-                    source.connect(audioCtx.destination);
-                } catch (e) {}
-                audio.play();
-            };
-
-            audio.onended = () => resolve();
-            audio.onerror = () => resolve();
-            setTimeout(() => resolve(), 3000);
-        });
+    function speakText(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.lang = 'my-MM';
+            utt.rate = 1.0;
+            window.speechSynthesis.speak(utt);
+        }
     }
 </script>
 
