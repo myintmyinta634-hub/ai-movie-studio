@@ -3,53 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RecapAI Pro - Myanmar Voice Video Studio</title>
+    <title>RecapAI Pro - Movie Studio</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #0d1117; color: #ffffff; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 500px; width: 100%; background: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
-        h2 { text-align: center; color: #58a6ff; margin-bottom: 20px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0d1117; color: #c9d1d9; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; background: #161b22; padding: 25px; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #58a6ff; margin-bottom: 20px; font-size: 24px; }
         
+        .section { margin-bottom: 20px; background: #21262d; padding: 15px; border-radius: 8px; border: 1px solid #30363d; }
+        .section-title { font-size: 14px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: block; }
+        
+        label { display: block; margin-bottom: 6px; font-size: 13px; color: #c9d1d9; }
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #fff; margin-bottom: 12px; font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #58a6ff; outline: none; }
+
         .upload-box {
-            border: 2px dashed #3fb950; border-radius: 8px; padding: 30px 15px;
-            text-align: center; cursor: pointer; background: #21262d; transition: 0.3s;
+            border: 2px dashed #238636; border-radius: 8px; padding: 25px; text-align: center; cursor: pointer; background: #161b22; transition: 0.3s;
         }
-        .upload-box:active { background: #282e33; }
-        
-        .btn-process {
-            width: 100%; margin-top: 20px; padding: 14px; background: #238636;
-            color: white; border: none; border-radius: 6px; font-weight: bold;
-            font-size: 16px; cursor: pointer;
+        .upload-box:hover { background: #1c2128; border-color: #2ea043; }
+
+        .btn-main {
+            width: 100%; padding: 14px; background: #238636; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s;
         }
-        .btn-process:disabled { background: #484f58; cursor: not-allowed; }
-        
+        .btn-main:hover { background: #2ea043; }
+        .btn-main:disabled { background: #484f58; cursor: not-allowed; }
+
         .progress-box { margin-top: 20px; display: none; }
-        .progress-bar-bg { background: #30363d; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar-bg { background: #30363d; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
         .progress-bar-fill { background: #58a6ff; width: 0%; height: 100%; transition: width 0.2s; }
         .progress-text { font-size: 13px; color: #8b949e; text-align: center; }
 
         .result-box { margin-top: 20px; display: none; text-align: center; }
-        video { width: 100%; border-radius: 8px; margin-bottom: 12px; background: #000; }
+        video { width: 100%; border-radius: 8px; margin-bottom: 15px; background: #000; border: 1px solid #30363d; }
         .btn-download {
-            display: inline-block; padding: 10px 20px; background: #1f6feb;
-            color: white; text-decoration: none; border-radius: 6px; font-weight: bold;
+            display: inline-block; padding: 12px 24px; background: #1f6feb; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;
         }
+        .btn-download:hover { background: #388bfd; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎬 RecapAI Pro Studio</h2>
+    <h1>🎬 RecapAI Pro Movie Studio</h1>
 
-    <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+    <!-- API Key & Settings Section -->
+    <div class="section">
+        <span class="section-title">⚙️ AI & Voice Settings</span>
+        <label>Gemini API Key (Optional)</label>
+        <input type="text" id="apiKeyInput" placeholder="Enter Gemini API Key (If available)...">
 
-    <div class="upload-box" id="dropArea">
-        <p id="uploadStatusText" style="font-weight: bold; font-size: 16px;">📁 ဗီဒီယို တင်ရန် ဤနေရာကို နှိပ်ပါ</p>
-        <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(မြန်မာ AI အသံပါဝင်သော Recap Video ပြုလုပ်မည်)</p>
+        <label>Narration Voice Language (ဇာတ်ကြောင်းပြော အသံ)</label>
+        <select id="voiceLangSelect">
+            <option value="my">Myanmar (မြန်မာအသံ)</option>
+            <option value="en">English (အင်္ဂလိပ်အသံ)</option>
+        </select>
+
+        <label>Clip Duration (ခွဲထုတ်မည့် စက္ကန့်)</label>
+        <input type="number" id="chunkSizeInput" value="3" min="1" max="10">
     </div>
 
-    <button class="btn-process" id="startBtn">Generate Full Recap Video</button>
+    <!-- Upload Section -->
+    <div class="section">
+        <span class="section-title">📁 Video Input</span>
+        <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+        <div class="upload-box" id="dropArea">
+            <p id="uploadStatusText" style="font-weight: bold; color: #3fb950;">🎬 ဗီဒီယိုဖိုင် ရွေးချယ်ရန် ဤနေရာကို နှိပ်ပါ</p>
+            <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">(ဖုန်းထဲမှ Video ဖိုင်ကို တိုက်ရိုက် တင်နိုင်ပါသည်။)</p>
+        </div>
+    </div>
 
+    <!-- Action Button -->
+    <button class="btn-main" id="startBtn">⚡ Generate Movie Recap Video</button>
+
+    <!-- Progress Status -->
     <div class="progress-box" id="progressBox">
         <div class="progress-bar-bg">
             <div class="progress-bar-fill" id="progressFill"></div>
@@ -57,10 +85,12 @@
         <div class="progress-text" id="statusText">စတင်နေပါသည်... (0%)</div>
     </div>
 
+    <!-- Video Output Result -->
     <div class="result-box" id="resultBox">
-        <h3>🎉 မြန်မာအသံပါသော Recap Video ရပါပြီ</h3>
+        <h3 style="color: #3fb950; margin-bottom: 10px;">🎉 Movie Recap Video ပြုလုပ်ပြီးပါပြီ</h3>
         <video id="outVideo" controls playsinline></video>
-        <a id="dlBtn" class="btn-download" download="Movie_Recap_Myanmar.webm">Download Video</a>
+        <br>
+        <a id="dlBtn" class="btn-download" download="Movie_Recap.webm">📥 Download Recap Video</a>
     </div>
 </div>
 
@@ -84,34 +114,17 @@
         if (e.target.files && e.target.files[0]) {
             loadedFile = e.target.files[0];
             uploadText.innerText = `✅ ရွေးချယ်ပြီး: ${loadedFile.name}`;
-            uploadText.style.color = '#3fb950';
         }
     });
-
-    // CORS Audio Decoder for Myanmar AI Voice
-    async function fetchMyanmarAudioBuffer(text, audioCtx) {
-        const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=my&q=${encodeURIComponent(text)}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(googleTtsUrl)}`;
-        
-        try {
-            const res = await fetch(proxyUrl);
-            if (!res.ok) throw new Error("Proxy error");
-            const arrayBuffer = await res.arrayBuffer();
-            return await audioCtx.decodeAudioData(arrayBuffer);
-        } catch (err) {
-            console.warn("Proxy 1 failed, trying proxy 2...", err);
-            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(googleTtsUrl)}`;
-            const res2 = await fetch(fallbackUrl);
-            const arrayBuffer2 = await res2.arrayBuffer();
-            return await audioCtx.decodeAudioData(arrayBuffer2);
-        }
-    }
 
     startBtn.addEventListener('click', async () => {
         if (!loadedFile) {
             alert("ကျေးဇူးပြု၍ ဗီဒီယိုဖိုင် ရွေးချယ်ပေးပါ!");
             return;
         }
+
+        const chunkSize = parseInt(document.getElementById('chunkSizeInput').value) || 3;
+        const lang = document.getElementById('voiceLangSelect').value;
 
         startBtn.disabled = true;
         progressBox.style.display = 'block';
@@ -127,34 +140,20 @@
             await new Promise(res => tempVid.onloadedmetadata = res);
 
             const duration = tempVid.duration; 
-            const chunkSize = 3; 
             const totalClips = Math.floor(duration / chunkSize);
 
             if (totalClips < 1) {
-                alert("ဗီဒီယိုသည် အနည်းဆုံး ၃ စက္ကန့် ရှိရပါမည်။");
+                alert("ဗီဒီယိုသည် အနည်းဆုံး ရွေးချယ်ထားသော စက္ကန့် ပမာဏ ရှိရပါမည်။");
                 startBtn.disabled = false;
                 return;
             }
 
-            // Canvas Setup (Video Track)
+            // Setup Canvas & Audio Streams
             const canvas = document.createElement('canvas');
             canvas.width = tempVid.videoWidth || 640;
             canvas.height = tempVid.videoHeight || 360;
             const ctx = canvas.getContext('2d');
             const canvasStream = canvas.captureStream(30);
-
-            // Web Audio API Setup (Myanmar Voice Audio Track)
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            }
-            const audioDest = audioCtx.createMediaStreamDestination();
-
-            // Combine Video + Audio Streams
-            const combinedStream = new MediaStream([
-                ...canvasStream.getVideoTracks(),
-                ...audioDest.stream.getAudioTracks()
-            ]);
 
             let mimeType = 'video/webm';
             if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
@@ -163,7 +162,7 @@
                 mimeType = 'video/mp4';
             }
 
-            const recorder = new MediaRecorder(combinedStream, { mimeType });
+            const recorder = new MediaRecorder(canvasStream, { mimeType });
             const chunks = [];
 
             recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
@@ -173,24 +172,18 @@
                 const startTime = i * chunkSize;
                 const pct = Math.round(((i + 1) / totalClips) * 100);
                 
-                statusText.innerText = `Clip (${i + 1}/${totalClips}) အတွက် မြန်မာ AI အသံ ပေါင်းစပ်နေပါသည်... (${pct}%)`;
+                statusText.innerText = `Clip (${i + 1}/${totalClips}) Processing... (${pct}%)`;
                 progressFill.style.width = pct + '%';
 
                 tempVid.currentTime = startTime;
                 await new Promise(r => tempVid.onseeked = r);
 
-                // Fetch & Inject Myanmar Voice Audio into Video Audio Track
-                const speechScript = `ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ကို တွေ့ရမှာ ဖြစ်ပါတယ်။`;
-                try {
-                    const audioBuffer = await fetchMyanmarAudioBuffer(speechScript, audioCtx);
-                    const sourceNode = audioCtx.createBufferSource();
-                    sourceNode.buffer = audioBuffer;
-                    sourceNode.connect(audioDest); // Stream directly to video recorder
-                    sourceNode.connect(audioCtx.destination); // Play to speaker
-                    sourceNode.start();
-                } catch (audioErr) {
-                    console.error("Audio Injection Error:", audioErr);
-                }
+                // Speak Audio locally while processing
+                const script = lang === 'my' 
+                    ? `ဒီအခန်းမှာတော့ ဇာတ်လမ်းရဲ့ အစိတ်အပိုင်း အမှတ် ${i + 1} ဖြစ်ပါတယ်။` 
+                    : `This is scene number ${i + 1}.`;
+                
+                speakText(script, lang);
 
                 let elapsed = 0;
                 tempVid.play();
@@ -209,9 +202,9 @@
                 const resUrl = URL.createObjectURL(finalBlob);
                 outVideo.src = resUrl;
                 dlBtn.href = resUrl;
-                dlBtn.download = `Movie_Recap_Myanmar.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
+                dlBtn.download = `Movie_Recap.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
                 resultBox.style.display = 'block';
-                statusText.innerText = "မြန်မာအသံပါဝင်သော Recap Video ပြုလုပ်ပြီးပါပြီ!";
+                statusText.innerText = "Recap Video ပြုလုပ်ပြီးပါပြီ!";
                 startBtn.disabled = false;
             };
 
@@ -220,6 +213,16 @@
             startBtn.disabled = false;
         }
     });
+
+    function speakText(text, lang) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.lang = lang === 'my' ? 'my-MM' : 'en-US';
+            utt.rate = 1.0;
+            window.speechSynthesis.speak(utt);
+        }
+    }
 </script>
 
 </body>
